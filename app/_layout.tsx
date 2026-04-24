@@ -1,58 +1,45 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { ThemeProvider } from "styled-components/native";
+import { theme } from "../styles/theme";
 
-import { useColorScheme } from '@/components/useColorScheme';
-
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// impede que a Splash Screen nativa se esconda automaticamente
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  // carrega as fontes (se houver fontes personalizadas, adicione aqui)
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
+    // ex. de fonte personalizada (comente se não estiver usando ainda)
+    // 'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  // efeito para esconder a Splash quando tudo estiver pronto
   useEffect(() => {
+    // se houve erro no carregamento das fontes, logamos
     if (error) throw error;
-  }, [error]);
 
-  useEffect(() => {
+    // qdo as fontes terminarem de carregar
     if (loaded) {
+      // Escondemos a Splash nativa. O app agora é visível.
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
+  // enquanto as fontes não carregam, não renderizamos nada
+  // (a Splash nativa continua visível neste momento)
   if (!loaded) {
     return null;
   }
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
+  // renderização principal do App envolvido pelo seu Tema
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider theme={theme}>
       <Stack>
+        {/* esconde o cabeçalho padrão para as tabs */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        {/* add outras telas de modal aqui */}
       </Stack>
     </ThemeProvider>
   );
