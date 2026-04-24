@@ -3,13 +3,13 @@ import styled from 'styled-components/native';
 import { MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 
-// Container principal usando SafeAreaView para evitar o "notch" do celular
+// container principal usando SafeAreaView para evitar o "notch" do celular .....
 const Container = styled.SafeAreaView`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
 `;
 
-// Header com logo e texto lado a lado
+// header com logo e texto lado a lado
 const Header = styled.View`
   flex-direction: row;
   align-items: center;
@@ -39,7 +39,7 @@ const Subtitle = styled.Text`
   color: ${(props) => props.theme.colors.gray};
 `;
 
-// Corpo da tela com os cards
+// body da tela com os cards
 const Content = styled.View`
   flex: 1;
   padding: 20px;
@@ -69,8 +69,7 @@ const CardText = styled.Text`
 export default function HomeScreen() {
   return (
     <Container>
-      <Header>
-        {/* Usando a imagem da splash que você já tem no projeto */}
+      <Header>        
         <Logo 
           source={require('../../assets/images/splash-icon.png')} 
           resizeMode="contain" 
