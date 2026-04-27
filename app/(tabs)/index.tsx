@@ -1,15 +1,14 @@
-import React from 'react';
-import styled from 'styled-components/native';
-import { MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
-import { theme } from '../../styles/theme';
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router"; // importar o router
+import React from "react";
+import styled from "styled-components/native";
+import { theme } from "../../styles/theme";
 
-// container principal usando SafeAreaView para evitar o "notch" do celular .....
 const Container = styled.SafeAreaView`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
 `;
 
-// header com logo e texto lado a lado
 const Header = styled.View`
   flex-direction: row;
   align-items: center;
@@ -39,13 +38,12 @@ const Subtitle = styled.Text`
   color: ${(props) => props.theme.colors.gray};
 `;
 
-// body da tela com os cards
 const Content = styled.View`
   flex: 1;
   padding: 20px;
   flex-direction: row;
   justify-content: space-between;
-  flex-wrap: wrap; /* Permite que os cards quebrem de linha se necessário */
+  flex-wrap: wrap;
 `;
 
 const Card = styled.TouchableOpacity`
@@ -56,7 +54,7 @@ const Card = styled.TouchableOpacity`
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  border: 1px solid ${(props) => props.theme.colors.primary}40; /* 40 é 25% de opacidade */
+  border: 1px solid ${(props) => props.theme.colors.primary}40;
 `;
 
 const CardText = styled.Text`
@@ -67,12 +65,14 @@ const CardText = styled.Text`
 `;
 
 export default function HomeScreen() {
+  const router = useRouter(); // inicializar o router
+
   return (
     <Container>
-      <Header>        
-        <Logo 
-          source={require('../../assets/images/splash-icon.png')} 
-          resizeMode="contain" 
+      <Header>
+        <Logo
+          source={require("../../assets/images/splash-icon.png")}
+          resizeMode="contain"
         />
         <HeaderTextContainer>
           <Title>PurrfectCare</Title>
@@ -81,20 +81,21 @@ export default function HomeScreen() {
       </Header>
 
       <Content>
-        <Card activeOpacity={0.7}>
-          <MaterialCommunityIcons 
-            name="cat" 
-            size={45} 
-            color={theme.colors.primary} 
+        {/* add o onPress apontando para o arquivo cat-breeds.tsx */}
+        <Card activeOpacity={0.7} onPress={() => router.push("/cat-breeds")}>
+          <MaterialCommunityIcons
+            name="cat"
+            size={45}
+            color={theme.colors.primary}
           />
           <CardText>Meus Gatos</CardText>
         </Card>
 
         <Card activeOpacity={0.7}>
-          <FontAwesome 
-            name="calendar-check-o" 
-            size={40} 
-            color={theme.colors.secondary} 
+          <FontAwesome
+            name="calendar-check-o"
+            size={40}
+            color={theme.colors.secondary}
           />
           <CardText>Consultas</CardText>
         </Card>
