@@ -93,7 +93,7 @@ export default function HomeScreen() {
           <CardText>Meus Gatos</CardText>
         </Card>
 
-        <Card activeOpacity={0.7}>
+        <Card activeOpacity={0.7} onPress={() => router.push("/appointments")}>
           <FontAwesome
             name="calendar-check-o"
             size={40}
