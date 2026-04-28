@@ -69,7 +69,7 @@ export default function HomeScreen() {
 
   return (
     <Container>
-      {/* aqui é op header */}
+      {/* aqui é o header */}
       <Header>
         <Logo
           source={require("../../assets/images/splash-icon.png")}

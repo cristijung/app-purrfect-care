@@ -1,6 +1,5 @@
 import React from 'react';
 import styled from 'styled-components/native';
-//import { theme } from '../../styles/theme';
 
 interface BreedCardProps {
   name: string;
