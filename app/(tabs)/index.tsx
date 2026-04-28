@@ -69,6 +69,7 @@ export default function HomeScreen() {
 
   return (
     <Container>
+      {/* aqui é op header */}
       <Header>
         <Logo
           source={require("../../assets/images/splash-icon.png")}
@@ -80,8 +81,9 @@ export default function HomeScreen() {
         </HeaderTextContainer>
       </Header>
 
+      {/* aqui vemos o conteúdo da tela */}
       <Content>
-        {/* add o onPress apontando para o arquivo cat-breeds.tsx */}
+        {/* add o onPress apontando para o arquivo cat-breeds.tsx ................. */}
         <Card activeOpacity={0.7} onPress={() => router.push("/cat-breeds")}>
           <MaterialCommunityIcons
             name="cat"

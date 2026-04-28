@@ -39,6 +39,14 @@ export default function RootLayout() {
       <Stack>
         {/* esconde o cabeçalho padrão para as tabs */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="cat-breeds"
+          options={{
+            title: "Raças Felinas",
+            headerShown: true,
+            presentation: "card",
+          }}
+        />
         {/* add outras telas de modal aqui */}
       </Stack>
     </ThemeProvider>
