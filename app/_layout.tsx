@@ -6,7 +6,7 @@ import { ThemeProvider } from "styled-components/native";
 import { theme } from "../styles/theme";
 
 // impede que a Splash Screen nativa se esconda automaticamente
-SplashScreen.preventAutoHideAsync();
+//SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   // carrega as fontes (se houver fontes personalizadas, adicione aqui)

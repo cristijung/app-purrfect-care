@@ -20,7 +20,7 @@ const Title = styled.Text`
   font-weight: bold;
 `;
 
-const Subtitle = styled.View`
+const Subtitle = styled.Text`
   color: ${(props) => props.theme.colors.gray};
   font-size: 14px;
 `;

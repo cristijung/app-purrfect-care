@@ -45,7 +45,13 @@ export function ProductCard({ name, price, category, onPress }: ProductProps) {
         <MaterialCommunityIcons
           name="pill"
           size={40}
-          color={category === "Remédios" ? "#f55" : "#f90"}
+          color={
+            category === "Remédios"
+              ? "rgb(216, 33, 33)" 
+              : category === "Higiene"
+                ? "rgb(33, 150, 243)" 
+                : "rgb(248, 172, 57)" 
+          }
         />
       </ImagePlaceholder>
       <ProductName numberOfLines={2}>{name}</ProductName>
