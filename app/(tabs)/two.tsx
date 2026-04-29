@@ -1,6 +1,7 @@
 import { AddPetModal } from "@/components/Pets/AddPetModal";
 import { PetCard } from "@/components/Pets/PetsCard";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { FlatList } from "react-native";
 import styled from "styled-components/native";
@@ -39,7 +40,6 @@ const AddButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-// Interface para o objeto do gato
 interface Cat {
   id: string;
   name: string;
@@ -48,9 +48,8 @@ interface Cat {
 }
 
 export default function TabTwoScreen() {
+  const router = useRouter();
   const [isModalVisible, setModalVisible] = useState(false);
-
-  // Estado para saber qual gato estamos editando (null se for um novo)
   const [selectedCat, setSelectedCat] = useState<Cat | null>(null);
 
   const [myCats, setMyCats] = useState<Cat[]>([
@@ -62,32 +61,46 @@ export default function TabTwoScreen() {
     { id: "6", name: "Mafalda", breed: "Siamês", age: "18 anos" },
   ]);
 
-  // Função para abrir o modal em modo de criação
+  // modal para novo cadastro
   const handleOpenAddModal = () => {
     setSelectedCat(null);
     setModalVisible(true);
   };
 
-  // Função para abrir o modal em modo de edição
+  // modal preenchido para edição --> Long Press
   const handleOpenEditModal = (cat: Cat) => {
     setSelectedCat(cat);
     setModalVisible(true);
   };
 
+  // salvando tanto edições quanto novas inclusões de cats
   const handleSavePet = (name: string, breed: string, age: string) => {
     if (selectedCat) {
-      // MODO EDIÇÃO: Atualiza o gato existente
+      // modo p edição
       setMyCats((current) =>
         current.map((cat) =>
           cat.id === selectedCat.id ? { ...cat, name, breed, age } : cat,
         ),
       );
     } else {
-      // MODO CRIAÇÃO: Adiciona novo gato
+      // modo p add
       const newPet = { id: Math.random().toString(), name, breed, age };
       setMyCats((current) => [newPet, ...current]);
     }
     setModalVisible(false);
+  };
+
+  // vai p a tela de detalhes dinâmica --> rota dinâmica
+  const handleViewDetails = (cat: Cat) => {
+    router.push({
+      pathname: "/pet/[id]",
+      params: {
+        id: cat.id,
+        name: cat.name,
+        breed: cat.breed,
+        age: cat.age,
+      },
+    });
   };
 
   return (
@@ -105,21 +118,26 @@ export default function TabTwoScreen() {
             breed={item.breed}
             age={item.age}
             isFirst={index === 0}
-            onPress={() => handleOpenEditModal(item)} // Ao clicar no card, edita
+            // toque rápido: ver detalhes
+            onPress={() => handleViewDetails(item)}
+            // segurar o card: editar 
+            onLongPress={() => handleOpenEditModal(item)}
           />
         )}
         contentContainerStyle={{ paddingBottom: 100 }}
       />
 
+      {/* btn flutuante p add novo cats */}
       <AddButton activeOpacity={0.8} onPress={handleOpenAddModal}>
         <MaterialCommunityIcons name="plus" size={35} color="#FFF" />
       </AddButton>
 
+      {/* modal único q gerencia criação e edição */}
       <AddPetModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
         onAdd={handleSavePet}
-        initialData={selectedCat} // Passamos os dados do gato para o modal
+        initialData={selectedCat}
       />
     </Container>
   );
