@@ -131,7 +131,7 @@ export default function TabTwoScreen() {
             color={myCats.length > 0 ? "#FF9500" : "#999"}
           />
           <InstructionText>
-            Toque para <Highlight>ver</Highlight> ou segure para{" "}
+            Toque para <Highlight>ver</Highlight> ou segure para
             <Highlight>editar</Highlight>
           </InstructionText>
         </InstructionRow>

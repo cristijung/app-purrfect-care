@@ -1,17 +1,17 @@
-import React from 'react';
-import { useLocalSearchParams, Stack } from 'expo-router';
-import styled from 'styled-components/native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme } from '@/styles/theme';
+import { theme } from "@/styles/theme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Stack, useLocalSearchParams } from "expo-router"; // purrfectcare://pet/1?name=Daisi&breed=SRD
+import React from "react";
+import styled from "styled-components/native";
 
 const Container = styled.ScrollView`
   flex: 1;
-  background-color: ${props => props.theme.colors.background};
+  background-color: ${(props) => props.theme.colors.background};
 `;
 
 const PhotoHeader = styled.View`
   height: 300px;
-  background-color: ${props => props.theme.colors.surface};
+  background-color: ${(props) => props.theme.colors.surface};
   justify-content: center;
   align-items: center;
 `;
@@ -20,14 +20,14 @@ const Content = styled.View`
   padding: 20px;
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
-  background-color: ${props => props.theme.colors.background};
+  background-color: ${(props) => props.theme.colors.background};
   margin-top: -30px;
 `;
 
 const Name = styled.Text`
   font-size: 32px;
   font-weight: bold;
-  color: ${props => props.theme.colors.primary};
+  color: ${(props) => props.theme.colors.primary};
 `;
 
 const InfoRow = styled.View`
@@ -37,53 +37,68 @@ const InfoRow = styled.View`
 `;
 
 const InfoBadge = styled.View`
-  background-color: ${props => props.theme.colors.surface};
+  background-color: ${(props) => props.theme.colors.surface};
   padding: 8px 15px;
   border-radius: 10px;
 `;
 
 const InfoText = styled.Text`
-  color: ${props => props.theme.colors.white};
+  color: ${(props) => props.theme.colors.white};
   font-size: 14px;
 `;
 
 const SectionTitle = styled.Text`
   font-size: 18px;
   font-weight: bold;
-  color: ${props => props.theme.colors.secondary};
+  color: ${(props) => props.theme.colors.secondary};
   margin-top: 30px;
   margin-bottom: 10px;
 `;
 
 const Description = styled.Text`
-  color: ${props => props.theme.colors.gray};
+  color: ${(props) => props.theme.colors.gray};
   line-height: 22px;
   font-size: 16px;
 `;
 
 export default function PetDetails() {
+  // o hook extrai os vlrs diretamente da rota atual
   const { id, name, breed, age } = useLocalSearchParams();
 
   return (
     <Container>
-      <Stack.Screen options={{ title: name as string, headerTransparent: true, headerTintColor: theme.colors.primary }} />
-      
+      <Stack.Screen
+        options={{
+          title: name as string,
+          headerTransparent: true,
+          headerTintColor: theme.colors.primary,
+        }}
+      />
+
       <PhotoHeader>
-        <MaterialCommunityIcons name="cat" size={120} color={theme.colors.primary} />
+        <MaterialCommunityIcons
+          name="cat"
+          size={120}
+          color={theme.colors.primary}
+        />
       </PhotoHeader>
 
       <Content>
         <Name>{name}</Name>
         <InfoRow>
-          <InfoBadge><InfoText>{breed}</InfoText></InfoBadge>
-          <InfoBadge><InfoText>{age}</InfoText></InfoBadge>
+          <InfoBadge>
+            <InfoText>{breed}</InfoText>
+          </InfoBadge>
+          <InfoBadge>
+            <InfoText>{age}</InfoText>
+          </InfoBadge>
         </InfoRow>
 
         <SectionTitle>Sobre o Pet</SectionTitle>
         <Description>
-          Este é o espaço para os detalhes do {name}. Como ainda não temos banco de dados, 
-          estamos exibindo os dados passados via rota. Futuramente, aqui ficarão 
-          as observações médicas, vacinas e temperamento.
+          Este é o espaço para os detalhes do {name}. Como ainda não temos banco
+          de dados, estamos exibindo os dados passados via rota. Futuramente,
+          aqui ficarão as observações médicas, vacinas e temperamento.
         </Description>
 
         <SectionTitle>Histórico de Saúde</SectionTitle>
