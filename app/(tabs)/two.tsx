@@ -13,13 +13,34 @@ const Container = styled.SafeAreaView`
 
 const Header = styled.View`
   padding: 20px;
-  padding-bottom: 10px;
+  padding-bottom: 5px;
 `;
 
 const Title = styled.Text`
   font-size: 28px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.primary};
+`;
+
+const InstructionRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: ${(props) => props.theme.colors.surface};
+  border-radius: 8px;
+  align-self: flex-start;
+`;
+
+const InstructionText = styled.Text`
+  font-size: 12px;
+  color: ${(props) => props.theme.colors.gray};
+  margin-left: 6px;
+`;
+
+const Highlight = styled.Text`
+  color: ${(props) => props.theme.colors.secondary};
+  font-weight: bold;
 `;
 
 const AddButton = styled.TouchableOpacity`
@@ -61,36 +82,30 @@ export default function TabTwoScreen() {
     { id: "6", name: "Mafalda", breed: "Siamês", age: "18 anos" },
   ]);
 
-  // modal para novo cadastro
   const handleOpenAddModal = () => {
     setSelectedCat(null);
     setModalVisible(true);
   };
 
-  // modal preenchido para edição --> Long Press
   const handleOpenEditModal = (cat: Cat) => {
     setSelectedCat(cat);
     setModalVisible(true);
   };
 
-  // salvando tanto edições quanto novas inclusões de cats
   const handleSavePet = (name: string, breed: string, age: string) => {
     if (selectedCat) {
-      // modo p edição
       setMyCats((current) =>
         current.map((cat) =>
           cat.id === selectedCat.id ? { ...cat, name, breed, age } : cat,
         ),
       );
     } else {
-      // modo p add
       const newPet = { id: Math.random().toString(), name, breed, age };
       setMyCats((current) => [newPet, ...current]);
     }
     setModalVisible(false);
   };
 
-  // vai p a tela de detalhes dinâmica --> rota dinâmica
   const handleViewDetails = (cat: Cat) => {
     router.push({
       pathname: "/pet/[id]",
@@ -107,6 +122,19 @@ export default function TabTwoScreen() {
     <Container>
       <Header>
         <Title>Meus Gatos</Title>
+
+        {/* Feedback visual para o usuário */}
+        <InstructionRow>
+          <MaterialCommunityIcons
+            name="gesture-tap-hold"
+            size={16}
+            color={myCats.length > 0 ? "#FF9500" : "#999"}
+          />
+          <InstructionText>
+            Toque para <Highlight>ver</Highlight> ou segure para{" "}
+            <Highlight>editar</Highlight>
+          </InstructionText>
+        </InstructionRow>
       </Header>
 
       <FlatList
@@ -118,21 +146,17 @@ export default function TabTwoScreen() {
             breed={item.breed}
             age={item.age}
             isFirst={index === 0}
-            // toque rápido: ver detalhes
             onPress={() => handleViewDetails(item)}
-            // segurar o card: editar 
             onLongPress={() => handleOpenEditModal(item)}
           />
         )}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
       />
 
-      {/* btn flutuante p add novo cats */}
       <AddButton activeOpacity={0.8} onPress={handleOpenAddModal}>
         <MaterialCommunityIcons name="plus" size={35} color="#FFF" />
       </AddButton>
 
-      {/* modal único q gerencia criação e edição */}
       <AddPetModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
