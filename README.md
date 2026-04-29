@@ -13,3 +13,4 @@ Versões:
   - `npm install styled-components && npm install -D @types/styled-components @types/styled-components-react-native`
 - Lucide Icons: `npm install lucide-react-native`
 - Zustand & SQLite: `npx expo install expo-sqlite zustand`
+- Haptics: `npx expo install expo-haptics`
