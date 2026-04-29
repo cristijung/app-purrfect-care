@@ -51,6 +51,12 @@ const PRODUCTS = [
     category: "Remédios",
   },
   { id: "5", name: "Champú Seco", price: "99,99", category: "Higiene" },
+  {
+    id: "6",
+    name: "Ração úmida Royal Canin",
+    price: "59,99",
+    category: "Ração",
+  },
 ];
 
 export default function ShopScreen() {
