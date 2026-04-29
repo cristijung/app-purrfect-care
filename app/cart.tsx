@@ -101,7 +101,7 @@ export default function CartModal() {
   const { items, removeItem, clearCart } = useCartStore();
   const router = useRouter();
 
-  // Cálculo do total: garante que trata corretamente vírgulas e pontos
+  // cálculo do total: garante que trata corretamente vírgulas e pontos
   const total = items.reduce((acc, item) => {
     const priceValue = parseFloat(
       item.price.replace(".", "").replace(",", "."),
@@ -113,10 +113,9 @@ export default function CartModal() {
     if (items.length === 0) return;
 
     try {
-      // Abre o banco de dados
+      // abre o banco de dados
       const db = await SQLite.openDatabaseAsync("purrfectcare.db");
 
-      // CORREÇÃO CRÍTICA: Garante que a tabela existe antes de inserir
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS orders (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,13 +130,14 @@ export default function CartModal() {
         .join(", ");
       const date = new Date().toLocaleDateString("pt-BR");
 
-      // Insere o pedido
+      // insere o pedido
       await db.runAsync(
         "INSERT INTO orders (product_names, total_price, date) VALUES (?, ?, ?)",
         [productNames, total, date],
       );
 
-      Alert.alert("Sucesso! 🐾", "Sua compra foi registada no histórico.");
+      // aqui o alert p depois trocar por um toast
+      Alert.alert("Sucesso!", "Sua compra foi registada no histórico.");
       clearCart();
       router.back();
     } catch (error) {
@@ -172,7 +172,6 @@ export default function CartModal() {
 
       <FlatList
         data={items}
-        // Correção da Unique Key: ID + Index para evitar conflitos
         keyExtractor={(item, index) =>
           item.id ? item.id.toString() : index.toString()
         }
