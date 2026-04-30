@@ -141,7 +141,7 @@ export default function AdminDashboard() {
     try {
       const db = await SQLite.openDatabaseAsync("purrfectcare.db");
 
-      // 1. GARANTIA: Cria a tabela aqui também caso o initialize global falhe
+      // cria a tabela aqui também caso o initialize global falhe
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS appointments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,14 +155,14 @@ export default function AdminDashboard() {
         );
       `);
 
-      // 2. Agora sim, faz a consulta
+      // faz a consulta
       const allRows = await db.getAllAsync<Appointment>(
         "SELECT * FROM appointments ORDER BY id DESC",
       );
 
       setAppointments(allRows);
 
-      // Atualiza os contadores
+      // atualiza os contadores
       const consultas = allRows.filter((a) => a.type === "Consulta").length;
       const exames = allRows.filter((a) => a.type === "Exame").length;
       const cirurgias = allRows.filter((a) => a.type === "Cirurgia").length;
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
       setCounts({ consultas, exames, cirurgias });
     } catch (error) {
       console.error("Erro ao carregar dados admin:", error);
-      // Se der erro, resetamos para lista vazia para não travar a UI
+      // SE der erro, resetamos para lista vazia para não travar a UI
       setAppointments([]);
     }
   };

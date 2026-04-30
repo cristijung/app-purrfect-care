@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { Alert, ScrollView, TouchableOpacity } from 'react-native';
-import styled from 'styled-components/native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { theme } from '@/styles/theme';
+import { theme } from "@/styles/theme";
+import { Stack, useRouter } from "expo-router";
+import * as SQLite from "expo-sqlite";
+import React, { useState } from "react";
+import { Alert, ScrollView } from "react-native";
+import styled from "styled-components/native";
 
 const Container = styled.View`
   flex: 1;
-  background-color: ${props => props.theme.colors.background};
+  background-color: ${(props) => props.theme.colors.background};
   padding: 20px;
 `;
 
@@ -17,15 +16,16 @@ const Label = styled.Text`
   font-size: 16px;
   margin-bottom: 8px;
   margin-top: 15px;
+  font-weight: bold;
 `;
 
 const Input = styled.TextInput`
-  background-color: ${props => props.theme.colors.surface};
+  background-color: ${(props) => props.theme.colors.surface};
   color: white;
   padding: 15px;
   border-radius: 10px;
   font-size: 16px;
-  border: 1px solid ${props => props.theme.colors.primary}30;
+  border: 1px solid ${(props) => props.theme.colors.primary}30;
 `;
 
 const PickerContainer = styled.View`
@@ -35,23 +35,26 @@ const PickerContainer = styled.View`
 `;
 
 const TypeButton = styled.TouchableOpacity<{ active: boolean }>`
-  background-color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.surface};
-  padding: 10px;
+  background-color: ${(props) =>
+    props.active ? props.theme.colors.primary : props.theme.colors.surface};
+  padding: 12px;
   border-radius: 8px;
-  width: 30%;
+  width: 31%;
   align-items: center;
+  border: 1px solid
+    ${(props) => (props.active ? props.theme.colors.primary : "#333")};
 `;
 
 const TypeText = styled.Text<{ active: boolean }>`
-  color: ${props => props.active ? 'white' : props.theme.colors.gray};
+  color: ${(props) => (props.active ? "white" : props.theme.colors.gray)};
   font-weight: bold;
-  font-size: 12px;
+  font-size: 13px;
 `;
 
 const SaveButton = styled.TouchableOpacity`
-  background-color: ${props => props.theme.colors.primary};
+  background-color: ${(props) => props.theme.colors.primary};
   padding: 18px;
-  border-radius: 12px;
+  border-radius: 15px;
   align-items: center;
   margin-top: 40px;
 `;
@@ -64,58 +67,83 @@ const SaveButtonText = styled.Text`
 
 export default function NewAppointment() {
   const router = useRouter();
-  const [petName, setPetName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [date, setDate] = useState('');
-  const [type, setType] = useState('Consulta');
+  const [petName, setPetName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [date, setDate] = useState("");
+  const [type, setType] = useState("Consulta");
 
   const handleSave = async () => {
-    if (!petName || !ownerName || !date) {
-      Alert.alert("Erro", "Preencha todos os campos.");
+    if (!petName.trim() || !ownerName.trim() || !date.trim()) {
+      Alert.alert("Campos vazios", "Por favor, preencha todos os dados.");
       return;
     }
 
     try {
-      const db = await SQLite.openDatabaseAsync('purrfectcare.db');
-      
-      // Salva no SQLite com synced = 0
+      const db = await SQLite.openDatabaseAsync("purrfectcare.db");
+
+      // configuração e garantia da Tabela
+      await db.execAsync(`
+        PRAGMA journal_mode = WAL;
+        CREATE TABLE IF NOT EXISTS appointments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          remote_id TEXT,
+          pet_name TEXT NOT NULL,
+          owner_name TEXT NOT NULL,
+          type TEXT NOT NULL,
+          date TEXT NOT NULL,
+          status TEXT DEFAULT 'Agendado',
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // inserção dos dados
       await db.runAsync(
-        'INSERT INTO appointments (pet_name, owner_name, type, date, synced) VALUES (?, ?, ?, ?, ?)',
-        [petName, ownerName, type, date, 0]
+        "INSERT INTO appointments (pet_name, owner_name, type, date, synced) VALUES (?, ?, ?, ?, ?)",
+        [petName, ownerName, type, date, 0],
       );
 
-      Alert.alert("Sucesso!", `${type} agendada com sucesso!`);
+      Alert.alert(
+        "Sucesso! 🐾",
+        `${type} para ${petName} agendada com sucesso.`,
+      );
       router.back();
     } catch (error) {
-      console.error(error);
-      Alert.alert("Erro", "Falha ao salvar no banco local.");
+      console.error("Erro ao salvar:", error);
+      Alert.alert("Erro", "Não foi possível salvar no banco local.");
     }
   };
 
   return (
     <Container>
-      <Stack.Screen options={{ title: 'Novo Agendamento', headerTintColor: theme.colors.primary }} />
+      <Stack.Screen
+        options={{
+          title: "Novo Agendamento",
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.primary,
+          headerShadowVisible: false,
+        }}
+      />
+
       <ScrollView showsVerticalScrollIndicator={false}>
-        
         <Label>Nome do Pet</Label>
-        <Input 
-          placeholder="Ex: Seth ou Mafalda" 
+        <Input
+          placeholder="Ex: Bolinha"
           placeholderTextColor="#666"
           value={petName}
           onChangeText={setPetName}
         />
 
         <Label>Nome do Tutor</Label>
-        <Input 
-          placeholder="Nome do cliente" 
+        <Input
+          placeholder="Ex: Ana Banana"
           placeholderTextColor="#666"
           value={ownerName}
           onChangeText={setOwnerName}
         />
 
         <Label>Data e Hora</Label>
-        <Input 
-          placeholder="Ex: 30/04 às 14:00" 
+        <Input
+          placeholder="Ex: 06/05 10h"
           placeholderTextColor="#666"
           value={date}
           onChangeText={setDate}
@@ -123,10 +151,10 @@ export default function NewAppointment() {
 
         <Label>Tipo de Procedimento</Label>
         <PickerContainer>
-          {['Consulta', 'Exame', 'Cirurgia'].map((item) => (
-            <TypeButton 
-              key={item} 
-              active={type === item} 
+          {["Consulta", "Exame", "Cirurgia"].map((item) => (
+            <TypeButton
+              key={item}
+              active={type === item}
               onPress={() => setType(item)}
             >
               <TypeText active={type === item}>{item}</TypeText>
@@ -137,7 +165,6 @@ export default function NewAppointment() {
         <SaveButton onPress={handleSave}>
           <SaveButtonText>Confirmar Agendamento</SaveButtonText>
         </SaveButton>
-
       </ScrollView>
     </Container>
   );
