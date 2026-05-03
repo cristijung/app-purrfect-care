@@ -5,10 +5,7 @@ import { Tabs } from "expo-router";
 import React from "react";
 
 export default function TabLayout() {
-  // pega a lista de itens do carrinho
   const cartItems = useCartStore((state) => state.items);
-
-  // calcular o total de itens --> quantidades
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
@@ -48,8 +45,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="shop"
         options={{
+          // config do Badge
           title: "Loja",
-          // configura o badge dinâmico
           tabBarBadge: totalItems > 0 ? totalItems : undefined,
           tabBarBadgeStyle: {
             backgroundColor: theme.colors.secondary,
@@ -58,6 +55,21 @@ export default function TabLayout() {
           },
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="basket" size={28} color={color} />
+          ),
+        }}
+      />
+
+      {/* admin */}
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: "Admin",
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons
+              name="shield-check"
+              size={28}
+              color={color}
+            />
           ),
         }}
       />
