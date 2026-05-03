@@ -67,54 +67,75 @@ const SaveButtonText = styled.Text`
 
 export default function NewAppointment() {
   const router = useRouter();
+
+  // estados para controlar os campos do formulário
   const [petName, setPetName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [date, setDate] = useState("");
   const [type, setType] = useState("Consulta");
 
+  /**
+   * fn para salvar o agendamento no SQLite
+   * utilizando withTransactionAsync para evitar o erro de "prepareAsync" ou "database locked"
+   */
   const handleSave = async () => {
+    // validação simples para garantir que nenhum campo está vazio
     if (!petName.trim() || !ownerName.trim() || !date.trim()) {
-      Alert.alert("Campos vazios", "Por favor, preencha todos os dados.");
+      Alert.alert(
+        "Campos obrigatórios",
+        "Por favor, preencha todos os dados antes de confirmar.",
+      );
       return;
     }
 
     try {
+      // abre a conexão com o banco de dados
       const db = await SQLite.openDatabaseAsync("purrfectcare.db");
 
-      // configuração e garantia da Tabela
-      await db.execAsync(`
-        PRAGMA journal_mode = WAL;
-        CREATE TABLE IF NOT EXISTS appointments (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          remote_id TEXT,
-          pet_name TEXT NOT NULL,
-          owner_name TEXT NOT NULL,
-          type TEXT NOT NULL,
-          date TEXT NOT NULL,
-          status TEXT DEFAULT 'Agendado',
-          synced INTEGER DEFAULT 0
+      /**
+       * o segredo --> Transação Atômica.
+       * Ela "tranca" o banco temporariamente, executa o comando e libera.
+       * Isso impede que registros sucessivos (como o 3º ou 4º) deem erro de conexão.
+       */
+      await db.withTransactionAsync(async () => {
+        // garante que a tabela exista e esteja atualizada com o modo WAL --> Write-Ahead Logging
+        await db.execAsync(`
+          PRAGMA journal_mode = WAL;
+          CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            remote_id TEXT,
+            pet_name TEXT NOT NULL,
+            owner_name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            date TEXT NOT NULL,
+            status TEXT DEFAULT 'Agendado',
+            synced INTEGER DEFAULT 0
+          );
+        `);
+
+        // insere os dados informados no formulário
+        await db.runAsync(
+          "INSERT INTO appointments (pet_name, owner_name, type, date, synced) VALUES (?, ?, ?, ?, ?)",
+          [petName, ownerName, type, date, 0], // synced inicia sempre como 0 (local)
         );
-      `);
+      });
 
-      // inserção dos dados
-      await db.runAsync(
-        "INSERT INTO appointments (pet_name, owner_name, type, date, synced) VALUES (?, ?, ?, ?, ?)",
-        [petName, ownerName, type, date, 0],
-      );
-
-      Alert.alert(
-        "Sucesso! 🐾",
-        `${type} para ${petName} agendada com sucesso.`,
-      );
+      // feedback de sucesso e retorno para a tela anterior
+      Alert.alert("Sucesso! 🐾", `Agendamento de ${petName} salvo localmente.`);
       router.back();
     } catch (error) {
-      console.error("Erro ao salvar:", error);
-      Alert.alert("Erro", "Não foi possível salvar no banco local.");
+      // log detalhado no console para ajudar no debug se algo falhar
+      console.error("Erro completo ao salvar agendamento:", error);
+      Alert.alert(
+        "Erro no Banco",
+        "Não foi possível salvar. Tente reiniciar o app.",
+      );
     }
   };
 
   return (
     <Container>
+      {/* config da barra superior da tela */}
       <Stack.Screen
         options={{
           title: "Novo Agendamento",
@@ -127,7 +148,7 @@ export default function NewAppointment() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Label>Nome do Pet</Label>
         <Input
-          placeholder="Ex: Bolinha"
+          placeholder="Ex: Mimi"
           placeholderTextColor="#666"
           value={petName}
           onChangeText={setPetName}
@@ -135,7 +156,7 @@ export default function NewAppointment() {
 
         <Label>Nome do Tutor</Label>
         <Input
-          placeholder="Ex: Ana Banana"
+          placeholder="Ex: Paula"
           placeholderTextColor="#666"
           value={ownerName}
           onChangeText={setOwnerName}
@@ -143,7 +164,7 @@ export default function NewAppointment() {
 
         <Label>Data e Hora</Label>
         <Input
-          placeholder="Ex: 06/05 10h"
+          placeholder="Ex: 10/05 16h"
           placeholderTextColor="#666"
           value={date}
           onChangeText={setDate}
@@ -162,7 +183,7 @@ export default function NewAppointment() {
           ))}
         </PickerContainer>
 
-        <SaveButton onPress={handleSave}>
+        <SaveButton onPress={handleSave} activeOpacity={0.8}>
           <SaveButtonText>Confirmar Agendamento</SaveButtonText>
         </SaveButton>
       </ScrollView>

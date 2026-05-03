@@ -3,8 +3,13 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import * as SQLite from "expo-sqlite";
 import React, { useCallback, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import styled from "styled-components/native";
+
+// importamos o serviço de sincronização que acabamos de criar
+import { syncAppointmentsWithFirebase } from "@/services/syncServices";
+
+// --- estilização --> mantendo seu padrão de Styled Components ---
 
 const Container = styled.SafeAreaView`
   flex: 1;
@@ -105,19 +110,18 @@ const Fab = styled.TouchableOpacity`
   justify-content: center;
   align-items: center;
   elevation: 5;
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.3;
-  shadow-radius: 3px;
 `;
 
+// badge que indica se o registro está na nuvem ou apenas no celular
 const SyncBadge = styled.View<{ synced: boolean }>`
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
   background-color: ${(props) => (props.synced ? "#03DAC6" : "#FFB74D")};
   margin-left: 10px;
 `;
+
+// --- interface de dados ---
 
 interface Appointment {
   id: number;
@@ -136,13 +140,23 @@ export default function AdminDashboard() {
     exames: 0,
     cirurgias: 0,
   });
+  const [isSyncing, setIsSyncing] = useState(false);
 
+  /**
+   * Fn p carregar dados do SQLite e disparar sincronização
+   */
   const loadData = async () => {
     try {
       const db = await SQLite.openDatabaseAsync("purrfectcare.db");
 
-      // cria a tabela aqui também caso o initialize global falhe
+      // antes de ler, tentamos sincronizar o que estiver pendente
+      setIsSyncing(true);
+      await syncAppointmentsWithFirebase();
+      setIsSyncing(false);
+
+      // garantindo que a tabela exista --> padrão de segurança adotado
       await db.execAsync(`
+        PRAGMA journal_mode = WAL;
         CREATE TABLE IF NOT EXISTS appointments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           remote_id TEXT,
@@ -155,27 +169,29 @@ export default function AdminDashboard() {
         );
       `);
 
-      // faz a consulta
+      // buscando todos os registros para exibir na tela
       const allRows = await db.getAllAsync<Appointment>(
         "SELECT * FROM appointments ORDER BY id DESC",
       );
 
       setAppointments(allRows);
 
-      // atualiza os contadores
+      // calculando as estatísticas para os cards superiores
       const consultas = allRows.filter((a) => a.type === "Consulta").length;
       const exames = allRows.filter((a) => a.type === "Exame").length;
       const cirurgias = allRows.filter((a) => a.type === "Cirurgia").length;
 
       setCounts({ consultas, exames, cirurgias });
     } catch (error) {
-      console.error("Erro ao carregar dados admin:", error);
-      // SE der erro, resetamos para lista vazia para não travar a UI
-      setAppointments([]);
+      console.error("Erro no AdminDashboard:", error);
+      setIsSyncing(false);
     }
   };
 
-  // recarrega os dados toda vez que a aba ganha foco
+  /**
+   * useFocusEffect garante que os dados recarreguem sempre que
+   * o usuário voltar para esta aba (ex: após cadastrar um novo pet)
+   */
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -202,7 +218,16 @@ export default function AdminDashboard() {
       <Header>
         <View>
           <Title>Painel Admin</Title>
-          <ActivityDetail>Gestão Offline First</ActivityDetail>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <ActivityDetail>Gestão Híbrida </ActivityDetail>
+            {isSyncing && (
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.primary}
+                style={{ marginLeft: 5 }}
+              />
+            )}
+          </View>
         </View>
         <MaterialCommunityIcons
           name="shield-check"
@@ -236,7 +261,7 @@ export default function AdminDashboard() {
         {appointments.map((item) => {
           const config = getIconConfig(item.type);
           return (
-            <ActivityCard key={item.id}>
+            <ActivityCard key={item.id.toString()}>
               <IconBox color={config.color}>
                 <MaterialCommunityIcons
                   name={config.icon as any}
@@ -252,20 +277,21 @@ export default function AdminDashboard() {
                   {item.date} • {item.owner_name}
                 </ActivityDetail>
               </ActivityInfo>
-              {/* badge visual de sincronização: Laranja = Pendente, Verde = OK */}
+
+              {/* círculo visual: Verde = Sincronizado | Laranja = Local */}
               <SyncBadge synced={item.synced === 1} />
             </ActivityCard>
           );
         })}
 
         {appointments.length === 0 && (
-          <ActivityDetail style={{ textAlign: "center", marginTop: 20 }}>
-            Nenhum agendamento encontrado.
+          <ActivityDetail style={{ textAlign: "center", marginTop: 40 }}>
+            Nenhum agendamento encontrado localmente.
           </ActivityDetail>
         )}
       </ScrollView>
 
-      {/* btn flutuante p novo agendamento */}
+      {/* btn de ação para cadastrar novo pet */}
       <Fab onPress={() => router.push("/admin/new-appointment")}>
         <MaterialCommunityIcons name="plus" size={32} color="white" />
       </Fab>
