@@ -1,192 +1,188 @@
-import { theme } from "@/styles/theme";
-import { Stack, useRouter } from "expo-router";
-import * as SQLite from "expo-sqlite";
+import { usePhoto } from "@/hooks/usePhoto"; // hook de fotos
+import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { Camera, ChevronLeft, Save } from "lucide-react-native";
 import React, { useState } from "react";
-import { Alert, ScrollView } from "react-native";
-import styled from "styled-components/native";
-
-const Container = styled.View`
-  flex: 1;
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 20px;
-`;
-
-const Label = styled.Text`
-  color: white;
-  font-size: 16px;
-  margin-bottom: 8px;
-  margin-top: 15px;
-  font-weight: bold;
-`;
-
-const Input = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.surface};
-  color: white;
-  padding: 15px;
-  border-radius: 10px;
-  font-size: 16px;
-  border: 1px solid ${(props) => props.theme.colors.primary}30;
-`;
-
-const PickerContainer = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-top: 10px;
-`;
-
-const TypeButton = styled.TouchableOpacity<{ active: boolean }>`
-  background-color: ${(props) =>
-    props.active ? props.theme.colors.primary : props.theme.colors.surface};
-  padding: 12px;
-  border-radius: 8px;
-  width: 31%;
-  align-items: center;
-  border: 1px solid
-    ${(props) => (props.active ? props.theme.colors.primary : "#333")};
-`;
-
-const TypeText = styled.Text<{ active: boolean }>`
-  color: ${(props) => (props.active ? "white" : props.theme.colors.gray)};
-  font-weight: bold;
-  font-size: 13px;
-`;
-
-const SaveButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
-  padding: 18px;
-  border-radius: 15px;
-  align-items: center;
-  margin-top: 40px;
-`;
-
-const SaveButtonText = styled.Text`
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
-`;
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function NewAppointment() {
   const router = useRouter();
+  const db = useSQLiteContext();
+  const { takePhoto } = usePhoto(); // usando o hook
 
-  // estados para controlar os campos do formulário
+  // estados do formulário
   const [petName, setPetName] = useState("");
   const [ownerName, setOwnerName] = useState("");
-  const [date, setDate] = useState("");
-  const [type, setType] = useState("Consulta");
+  const [appointmentType, setAppointmentType] = useState("");
+  const [date, setDate] = useState(new Date().toLocaleDateString("pt-BR"));
+  const [photoUri, setPhotoUri] = useState<string | null>(null); // o estado começa vazio  
 
   /**
-   * fn para salvar o agendamento no SQLite
-   * utilizando withTransactionAsync para evitar o erro de "prepareAsync" ou "database locked"
+   * dispara o fluxo de captura de imagem.
+   * aguarda a resolução da URI local pelo hook 'usePhoto' e, caso a captura 
+   * não seja cancelada pelo usuário, atualiza o estado 'photoUri' para 
+   * refletir a prévia na interface e preparar o dado para persistência no SQLite.
    */
-  const handleSave = async () => {
-    // validação simples para garantir que nenhum campo está vazio
-    if (!petName.trim() || !ownerName.trim() || !date.trim()) {
-      Alert.alert(
-        "Campos obrigatórios",
-        "Por favor, preencha todos os dados antes de confirmar.",
-      );
+  const handleCapturePhoto = async () => {
+    const uri = await takePhoto(); // executa a lógica de permissão
+    if (uri) setPhotoUri(uri); // atualiza a UI reativamente se houver nova foto
+  };
+
+  const saveAppointment = async () => {
+    if (!petName || !ownerName || !appointmentType) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
     try {
-      // abre a conexão com o banco de dados
-      const db = await SQLite.openDatabaseAsync("purrfectcare.db");
-
-      /**
-       * o segredo --> Transação Atômica.
-       * Ela "tranca" o banco temporariamente, executa o comando e libera.
-       * Isso impede que registros sucessivos (como o 3º ou 4º) deem erro de conexão.
-       */
+      // usando withTransactionAsync para garantir atomicidade e evitar bloqueios de banco
       await db.withTransactionAsync(async () => {
-        // garante que a tabela exista e esteja atualizada com o modo WAL --> Write-Ahead Logging
-        await db.execAsync(`
-          PRAGMA journal_mode = WAL;
-          CREATE TABLE IF NOT EXISTS appointments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            remote_id TEXT,
-            pet_name TEXT NOT NULL,
-            owner_name TEXT NOT NULL,
-            type TEXT NOT NULL,
-            date TEXT NOT NULL,
-            status TEXT DEFAULT 'Agendado',
-            synced INTEGER DEFAULT 0
-          );
-        `);
-
-        // insere os dados informados no formulário
         await db.runAsync(
-          "INSERT INTO appointments (pet_name, owner_name, type, date, synced) VALUES (?, ?, ?, ?, ?)",
-          [petName, ownerName, type, date, 0], // synced inicia sempre como 0 (local)
+          `INSERT INTO appointments (pet_name, owner_name, type, date, pet_photo, synced) 
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [petName, ownerName, appointmentType, date, photoUri, 0],
         );
       });
 
-      // feedback de sucesso e retorno para a tela anterior
-      Alert.alert("Sucesso! 🐾", `Agendamento de ${petName} salvo localmente.`);
+      Alert.alert(
+        "Sucesso",
+        "Agendamento salvo localmente! A sincronização ocorrerá em breve.",
+      );
       router.back();
     } catch (error) {
-      // log detalhado no console para ajudar no debug se algo falhar
-      console.error("Erro completo ao salvar agendamento:", error);
-      Alert.alert(
-        "Erro no Banco",
-        "Não foi possível salvar. Tente reiniciar o app.",
-      );
+      console.error("Erro ao salvar no SQLite:", error);
+      Alert.alert("Erro", "Não foi possível salvar o agendamento.");
     }
   };
 
   return (
-    <Container>
-      {/* config da barra superior da tela */}
-      <Stack.Screen
-        options={{
-          title: "Novo Agendamento",
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.primary,
-          headerShadowVisible: false,
-        }}
-      />
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
+      {/* header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <ChevronLeft color="#6B21A8" size={28} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Novo Agendamento</Text>
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Label>Nome do Pet</Label>
-        <Input
-          placeholder="Ex: Mimi"
-          placeholderTextColor="#666"
+      {/* seção de foto */}
+      <View style={styles.photoSection}>
+        <TouchableOpacity
+          style={styles.photoButton}
+          onPress={handleCapturePhoto}
+        >
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.previewImage} />
+          ) : (
+            <View style={styles.placeholderPhoto}>
+              <Camera color="#9CA3AF" size={40} />
+              <Text style={styles.placeholderText}>Tirar foto do Pet</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* campos do form */}
+      <View style={styles.form}>
+        <Text style={styles.label}>Nome do Pet *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Ex: Seth, Mimi..."
           value={petName}
           onChangeText={setPetName}
         />
 
-        <Label>Nome do Tutor</Label>
-        <Input
-          placeholder="Ex: Paula"
-          placeholderTextColor="#666"
+        <Text style={styles.label}>Nome do Tutor *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nome do proprietário"
           value={ownerName}
           onChangeText={setOwnerName}
         />
 
-        <Label>Data e Hora</Label>
-        <Input
-          placeholder="Ex: 10/05 16h"
-          placeholderTextColor="#666"
-          value={date}
-          onChangeText={setDate}
+        <Text style={styles.label}>Tipo de Serviço *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Ex: Consulta, Vacina, Banho"
+          value={appointmentType}
+          onChangeText={setAppointmentType}
         />
 
-        <Label>Tipo de Procedimento</Label>
-        <PickerContainer>
-          {["Consulta", "Exame", "Cirurgia"].map((item) => (
-            <TypeButton
-              key={item}
-              active={type === item}
-              onPress={() => setType(item)}
-            >
-              <TypeText active={type === item}>{item}</TypeText>
-            </TypeButton>
-          ))}
-        </PickerContainer>
+        <Text style={styles.label}>Data do Agendamento</Text>
+        <TextInput style={styles.input} value={date} onChangeText={setDate} />
 
-        <SaveButton onPress={handleSave} activeOpacity={0.8}>
-          <SaveButtonText>Confirmar Agendamento</SaveButtonText>
-        </SaveButton>
-      </ScrollView>
-    </Container>
+        <TouchableOpacity style={styles.saveButton} onPress={saveAppointment}>
+          <Save color="white" size={20} />
+          <Text style={styles.saveButtonText}>Salvar Agendamento</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F9FAFB" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    paddingTop: 60,
+  },
+  title: { fontSize: 20, fontWeight: "bold", marginLeft: 10, color: "#1F2937" },
+  photoSection: { alignItems: "center", marginVertical: 20 },
+  photoButton: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "#E5E7EB",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    borderStyle: "dashed",
+  },
+  previewImage: { width: "100%", height: "100%" },
+  placeholderPhoto: { alignItems: "center" },
+  placeholderText: { fontSize: 12, color: "#9CA3AF", marginTop: 8 },
+  form: { paddingHorizontal: 20 },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4B5563",
+    marginBottom: 6,
+    marginTop: 16,
+  },
+  input: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: "#1F2937",
+  },
+  saveButton: {
+    backgroundColor: "#6B21A8",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 32,
+    gap: 10,
+  },
+  saveButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
+});
