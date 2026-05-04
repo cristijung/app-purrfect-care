@@ -1,8 +1,9 @@
 import * as SQLite from "expo-sqlite";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db as firebaseDb } from "../config/firebaseConfig";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { db as firebaseDb, storage } from "../config/firebaseConfig";
 
-// definindo a interface para garantir o Type Safety que você utiliza no projeto
+// interface para garantir o Type Safety
 interface Appointment {
   id: number;
   pet_name: string;
@@ -10,43 +11,76 @@ interface Appointment {
   type: string;
   date: string;
   status: string;
+  pet_photo: string | null;
   synced: number;
 }
 
+/**
+ * orquestrador de Sincronização Híbrida (Offline-First)
+ * transfere dados e imagens do SQLite local para o Firebase.
+ */
 export const syncAppointmentsWithFirebase = async () => {
-  try {
-    const sqliteDb = await SQLite.openDatabaseAsync("purrfectcare.db");
+  const sqliteDb = await SQLite.openDatabaseAsync("purrfectcare.db");
 
-    // busca apenas registros locais que ainda não foram sincronizados
+  try {
+    // busca apenas registros pendentes de sincronização
     const pendentes = await sqliteDb.getAllAsync<Appointment>(
       "SELECT * FROM appointments WHERE synced = 0",
     );
 
     if (pendentes.length === 0) return;
 
-    console.log(`☁️ Sincronizando ${pendentes.length} itens com o Firebase...`);
+    console.log(`☁️ Iniciando sincronização de ${pendentes.length} itens...`);
 
     for (const item of pendentes) {
-      // envia para a coleção no Firestore
-      const docRef = await addDoc(collection(firebaseDb, "appointments"), {
-        pet_name: item.pet_name,
-        owner_name: item.owner_name,
-        type: item.type,
-        date: item.date,
-        status: item.status,
-        syncedAt: serverTimestamp(), // timestamp do servidor firebase
-      });
+      try {
+        let finalPhotoUrl = item.pet_photo;
 
-      // atualiza o SQLite local para marcar como sincronizado --> synced = 1
-      // aqui guardamos o ID gerado pelo Firebase no remote_id
-      await sqliteDb.runAsync(
-        "UPDATE appointments SET synced = 1, remote_id = ? WHERE id = ?",
-        [docRef.id, item.id],
-      );
+        // fluxo de Mídia: Upload para o Firebase Storage
+        // verificamos se existe uma URI local (file://) para fazer o upload
+        if (item.pet_photo && item.pet_photo.startsWith("file://")) {
+          // conversão da URI local em Blob (necessário para upload mobile)
+          const response = await fetch(item.pet_photo);
+          const blob = await response.blob();
+
+          // cria referência única na pasta 'pets/' usando o nome e timestamp
+          const storageRef = ref(
+            storage,
+            `pets/${item.pet_name}-${Date.now()}.jpg`,
+          );
+
+          // upload do binário para a nuvem
+          await uploadBytes(storageRef, blob);
+
+          // recupera a URL pública (HTTPS) para salvar no Firestore
+          finalPhotoUrl = await getDownloadURL(storageRef);
+        }
+
+        // persistência na Nuvem: Firestore
+        const docRef = await addDoc(collection(firebaseDb, "appointments"), {
+          pet_name: item.pet_name,
+          owner_name: item.owner_name,
+          type: item.type,
+          date: item.date,
+          status: item.status,
+          pet_photo: finalPhotoUrl, // URL da nuvem ou null
+          syncedAt: serverTimestamp(),
+        });
+
+        // confirmação Local: Atualiza o SQLite para evitar duplicidade
+        // armazenamos o remote_id gerado pelo Firebase para futuras edições
+        await sqliteDb.runAsync(
+          "UPDATE appointments SET synced = 1, remote_id = ? WHERE id = ?",
+          [docRef.id, item.id],
+        );
+
+        console.log(`✅ Item ${item.id} sincronizado com sucesso.`);
+      } catch (itemError) {
+        // Try/Catch interno: se um item falhar, o loop continua para os outros
+        console.error(`❌ Erro ao sincronizar item ${item.id}:`, itemError);
+      }
     }
-
-    console.log("Sincronização concluída com sucesso!");
   } catch (error) {
-    console.error("Falha na sincronização:", error);
+    console.error("⚠️ Erro crítico no serviço de sincronização:", error);
   }
 };
