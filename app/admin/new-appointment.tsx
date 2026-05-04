@@ -99,6 +99,7 @@ export default function NewAppointment() {
        */
       await db.withTransactionAsync(async () => {
         // garante que a tabela exista e esteja atualizada com o modo WAL --> Write-Ahead Logging
+        // registro de escrita antecipada
         await db.execAsync(`
           PRAGMA journal_mode = WAL;
           CREATE TABLE IF NOT EXISTS appointments (
