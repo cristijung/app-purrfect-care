@@ -98,7 +98,7 @@ export default function RegisterTutor() {
     null,
   );
 
-  // Função para Selfie ou Galeria
+  // fn para selfie ou galeria
   const handlePickImage = async () => {
     Alert.alert("Foto de Perfil", "Escolha uma opção", [
       { text: "Câmera (Selfie)", onPress: () => openCamera() },
@@ -129,7 +129,7 @@ export default function RegisterTutor() {
     if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
-  // Função para GPS
+  // fn p GPS
   const handleGetLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted")
@@ -138,7 +138,7 @@ export default function RegisterTutor() {
     let loc = await Location.getCurrentPositionAsync({});
     setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
 
-    // Geocodificação reversa para pegar o nome da rua/cidade
+    // geocodificação reversa para pegar o nome da rua/cidade
     let response = await Location.reverseGeocodeAsync({
       latitude: loc.coords.latitude,
       longitude: loc.coords.longitude,
@@ -155,7 +155,7 @@ export default function RegisterTutor() {
       return Alert.alert("Erro", "Preencha os campos obrigatórios.");
 
     try {
-      // Persistência local seguindo sua arquitetura offline-first
+      // persistência local seguindo sua arquitetura offline-first
       await db.runAsync(
         `INSERT INTO users (full_name, address, latitude, longitude, profile_photo, synced) 
          VALUES (?, ?, ?, ?, ?, ?)`,
