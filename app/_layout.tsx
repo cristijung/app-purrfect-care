@@ -1,20 +1,20 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { SQLiteProvider, type SQLiteDatabase } from "expo-sqlite"; // Adicionada tipagem
+import { SQLiteProvider, type SQLiteDatabase } from "expo-sqlite";
 import { useEffect } from "react";
 import { ThemeProvider } from "styled-components/native";
 import { theme } from "../styles/theme";
 
-// Impede que a Splash Screen nativa se esconda automaticamente
+// impede que a Splash Screen nativa se esconda automaticamente
 SplashScreen.preventAutoHideAsync();
 
 /**
- * Esta função cuida da estrutura do banco de dados.
- * Ela garante que a tabela e a coluna de foto existam antes do app abrir.
+ * esta função cuida da estrutura do banco de dados.
+ * ela garante que a tabela e a coluna de foto existam antes do app abrir.
  */
 async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  // Cria a tabela inicial caso não exista
+  // cria a tabela inicial caso não exista
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS appointments (
@@ -28,12 +28,12 @@ async function migrateDbIfNeeded(db: SQLiteDatabase) {
     );
   `);
 
-  // Tenta adicionar a coluna de foto para evitar o erro no NewAppointment
+  // tenta adicionar a coluna de foto para evitar o erro no NewAppointment
   try {
     await db.execAsync(`ALTER TABLE appointments ADD COLUMN pet_photo TEXT;`);
     console.log("✅ Banco de dados atualizado com a coluna pet_photo.");
   } catch (e) {
-    // Se a coluna já existir, ele cai aqui e apenas ignoramos o erro
+    // se a coluna já existir, ele cai aqui e apenas ignoramos o erro
     console.log("ℹ️ Estrutura do banco já está atualizada.");
   }
 }
@@ -55,7 +55,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider theme={theme}>
       {/* 
-        O onInit chama a nossa função de migração assim que o banco abre.
+        o onInit chama a nossa função de migração assim que o banco abre.
         Isso garante que o NewAppointment encontre a coluna 'pet_photo'.
       */}
       <SQLiteProvider
