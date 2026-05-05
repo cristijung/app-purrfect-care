@@ -155,6 +155,7 @@ export default function AdminDashboard() {
       setIsSyncing(false);
 
       // garantindo que a tabela exista --> padrão de segurança adotado
+      // nova coluna --> 'pet_photo TEXT,'
       await db.execAsync(`
         PRAGMA journal_mode = WAL;
         CREATE TABLE IF NOT EXISTS appointments (
@@ -165,6 +166,7 @@ export default function AdminDashboard() {
           type TEXT NOT NULL,
           date TEXT NOT NULL,
           status TEXT DEFAULT 'Agendado',
+          pet_photo TEXT,    
           synced INTEGER DEFAULT 0
         );
       `);

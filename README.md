@@ -15,3 +15,4 @@ Versões:
 - Zustand & SQLite: `npx expo install expo-sqlite zustand`
 - Haptics: `npx expo install expo-haptics`
 - Firebase: `npx expo install firebase`
+_______________________

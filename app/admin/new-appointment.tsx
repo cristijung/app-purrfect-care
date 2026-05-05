@@ -1,193 +1,216 @@
-import { theme } from "@/styles/theme";
-import { Stack, useRouter } from "expo-router";
-import * as SQLite from "expo-sqlite";
+import { usePhoto } from "@/hooks/usePhoto"; // hook de fotos
+import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { Camera, ChevronLeft, Save } from "lucide-react-native";
 import React, { useState } from "react";
-import { Alert, ScrollView } from "react-native";
-import styled from "styled-components/native";
+import { Alert, TouchableOpacity } from "react-native";
+import styled, { useTheme } from "styled-components/native";
 
-const Container = styled.View`
+// --- Estilização seguindo o padrão PurrfectCare ---
+const Container = styled.ScrollView`
   flex: 1;
-  background-color: ${(props) => props.theme.colors.background};
+  background-color: ${({ theme }) => theme.colors.background};
+`;
+
+const Header = styled.View`
+  flex-direction: row;
+  align-items: center;
   padding: 20px;
+  padding-top: 60px;
+`;
+
+const Title = styled.Text`
+  font-size: 22px;
+  font-weight: bold;
+  margin-left: 10px;
+  color: ${({ theme }) => theme.colors.text};
+`;
+
+const PhotoSection = styled.View`
+  align-items: center;
+  margin-vertical: 20px;
+`;
+
+const PhotoButton = styled.TouchableOpacity`
+  width: 150px;
+  height: 150px;
+  border-radius: 75px;
+  background-color: ${({ theme }) => theme.colors.secondary};
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-width: 2px;
+  border-color: ${({ theme }) => theme.colors.primary};
+  border-style: dashed;
+`;
+
+const PreviewImage = styled.Image`
+  width: 100%;
+  height: 100%;
+`;
+
+const PlaceholderPhoto = styled.View`
+  align-items: center;
+`;
+
+const PlaceholderText = styled.Text`
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text};
+  margin-top: 8px;
+`;
+
+const Form = styled.View`
+  padding-horizontal: 20px;
 `;
 
 const Label = styled.Text`
-  color: white;
-  font-size: 16px;
-  margin-bottom: 8px;
-  margin-top: 15px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.text};
+  margin-bottom: 6px;
+  margin-top: 16px;
 `;
 
-const Input = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.surface};
-  color: white;
-  padding: 15px;
-  border-radius: 10px;
-  font-size: 16px;
-  border: 1px solid ${(props) => props.theme.colors.primary}30;
-`;
-
-const PickerContainer = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-top: 10px;
-`;
-
-const TypeButton = styled.TouchableOpacity<{ active: boolean }>`
-  background-color: ${(props) =>
-    props.active ? props.theme.colors.primary : props.theme.colors.surface};
-  padding: 12px;
+const StyledInput = styled.TextInput`
+  background-color: ${({ theme }) => theme.colors.primary};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.text};
   border-radius: 8px;
-  width: 31%;
-  align-items: center;
-  border: 1px solid
-    ${(props) => (props.active ? props.theme.colors.primary : "#333")};
-`;
-
-const TypeText = styled.Text<{ active: boolean }>`
-  color: ${(props) => (props.active ? "white" : props.theme.colors.gray)};
-  font-weight: bold;
-  font-size: 13px;
+  padding: 12px;
+  font-size: 16px;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 const SaveButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
-  padding: 18px;
-  border-radius: 15px;
+  background-color: ${({ theme }) => theme.colors.primary};
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
-  margin-top: 40px;
+  padding: 16px;
+  border-radius: 12px;
+  margin-top: 32px;
+  gap: 10px;
 `;
 
 const SaveButtonText = styled.Text`
   color: white;
+  font-size: 16px;
   font-weight: bold;
-  font-size: 18px;
 `;
 
 export default function NewAppointment() {
   const router = useRouter();
+  const db = useSQLiteContext();
+  const theme = useTheme(); // acessa as cores do tema
+  const { takePhoto } = usePhoto(); // usando o hook
 
-  // estados para controlar os campos do formulário
+  // estados do formulário
   const [petName, setPetName] = useState("");
   const [ownerName, setOwnerName] = useState("");
-  const [date, setDate] = useState("");
-  const [type, setType] = useState("Consulta");
+  const [appointmentType, setAppointmentType] = useState("");
+  const [date, setDate] = useState(new Date().toLocaleDateString("pt-BR"));
+  const [photoUri, setPhotoUri] = useState<string | null>(null); // o estado começa vazio
 
   /**
-   * fn para salvar o agendamento no SQLite
-   * utilizando withTransactionAsync para evitar o erro de "prepareAsync" ou "database locked"
+   * dispara o fluxo de captura de imagem.
+   * aguarda a resolução da URI local pelo hook 'usePhoto' e, caso a captura
+   * não seja cancelada pelo usuário, atualiza o estado 'photoUri' para
+   * refletir a prévia na interface e preparar o dado para persistência no SQLite.
    */
-  const handleSave = async () => {
-    // validação simples para garantir que nenhum campo está vazio
-    if (!petName.trim() || !ownerName.trim() || !date.trim()) {
-      Alert.alert(
-        "Campos obrigatórios",
-        "Por favor, preencha todos os dados antes de confirmar.",
-      );
+  const handleCapturePhoto = async () => {
+    const uri = await takePhoto(); // executa a lógica de permissão
+    if (uri) setPhotoUri(uri); // atualiza a UI reativamente se houver nova foto
+  };
+
+  const saveAppointment = async () => {
+    if (!petName || !ownerName || !appointmentType) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
     try {
-      // abre a conexão com o banco de dados
-      const db = await SQLite.openDatabaseAsync("purrfectcare.db");
-
-      /**
-       * o segredo --> Transação Atômica.
-       * Ela "tranca" o banco temporariamente, executa o comando e libera.
-       * Isso impede que registros sucessivos (como o 3º ou 4º) deem erro de conexão.
-       */
+      // usando withTransactionAsync para garantir atomicidade e evitar bloqueios de banco
       await db.withTransactionAsync(async () => {
-        // garante que a tabela exista e esteja atualizada com o modo WAL --> Write-Ahead Logging
-        // registro de escrita antecipada
-        await db.execAsync(`
-          PRAGMA journal_mode = WAL;
-          CREATE TABLE IF NOT EXISTS appointments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            remote_id TEXT,
-            pet_name TEXT NOT NULL,
-            owner_name TEXT NOT NULL,
-            type TEXT NOT NULL,
-            date TEXT NOT NULL,
-            status TEXT DEFAULT 'Agendado',
-            synced INTEGER DEFAULT 0
-          );
-        `);
-
-        // insere os dados informados no formulário
         await db.runAsync(
-          "INSERT INTO appointments (pet_name, owner_name, type, date, synced) VALUES (?, ?, ?, ?, ?)",
-          [petName, ownerName, type, date, 0], // synced inicia sempre como 0 (local)
+          `INSERT INTO appointments (pet_name, owner_name, type, date, pet_photo, synced) 
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [petName, ownerName, appointmentType, date, photoUri, 0],
         );
       });
 
-      // feedback de sucesso e retorno para a tela anterior
-      Alert.alert("Sucesso! 🐾", `Agendamento de ${petName} salvo localmente.`);
+      Alert.alert(
+        "Sucesso",
+        "Agendamento salvo localmente! A sincronização ocorrerá em breve.",
+      );
       router.back();
     } catch (error) {
-      // log detalhado no console para ajudar no debug se algo falhar
-      console.error("Erro completo ao salvar agendamento:", error);
-      Alert.alert(
-        "Erro no Banco",
-        "Não foi possível salvar. Tente reiniciar o app.",
-      );
+      console.error("Erro ao salvar no SQLite:", error);
+      Alert.alert("Erro", "Não foi possível salvar o agendamento.");
     }
   };
 
   return (
-    <Container>
-      {/* config da barra superior da tela */}
-      <Stack.Screen
-        options={{
-          title: "Novo Agendamento",
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.primary,
-          headerShadowVisible: false,
-        }}
-      />
+    <Container contentContainerStyle={{ paddingBottom: 40 }}>
+      {/* header */}
+      <Header>
+        <TouchableOpacity onPress={() => router.back()}>
+          <ChevronLeft color={theme.colors.primary} size={28} />
+        </TouchableOpacity>
+        <Title>Novo Agendamento</Title>
+      </Header>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Label>Nome do Pet</Label>
-        <Input
-          placeholder="Ex: Mimi"
-          placeholderTextColor="#666"
+      {/* seção de foto */}
+      <PhotoSection>
+        <PhotoButton onPress={handleCapturePhoto}>
+          {photoUri ? (
+            <PreviewImage source={{ uri: photoUri }} />
+          ) : (
+            <PlaceholderPhoto>
+              <Camera color={theme.colors.text} size={40} />
+              <PlaceholderText>Tirar foto do Pet</PlaceholderText>
+            </PlaceholderPhoto>
+          )}
+        </PhotoButton>
+      </PhotoSection>
+
+      {/* campos do form */}
+      <Form>
+        <Label>Nome do Pet *</Label>
+        <StyledInput
+          placeholder="Ex: Seth, Mimi..."
+          placeholderTextColor={theme.colors.text}
           value={petName}
           onChangeText={setPetName}
         />
 
-        <Label>Nome do Tutor</Label>
-        <Input
-          placeholder="Ex: Paula"
-          placeholderTextColor="#666"
+        <Label>Nome do Tutor *</Label>
+        <StyledInput
+          placeholder="Nome do proprietário"
+          placeholderTextColor={theme.colors.text}
           value={ownerName}
           onChangeText={setOwnerName}
         />
 
-        <Label>Data e Hora</Label>
-        <Input
-          placeholder="Ex: 10/05 16h"
-          placeholderTextColor="#666"
-          value={date}
-          onChangeText={setDate}
+        <Label>Tipo de Serviço *</Label>
+        <StyledInput
+          placeholder="Ex: Consulta, Vacina, Banho"
+          placeholderTextColor={theme.colors.text}
+          value={appointmentType}
+          onChangeText={setAppointmentType}
         />
 
-        <Label>Tipo de Procedimento</Label>
-        <PickerContainer>
-          {["Consulta", "Exame", "Cirurgia"].map((item) => (
-            <TypeButton
-              key={item}
-              active={type === item}
-              onPress={() => setType(item)}
-            >
-              <TypeText active={type === item}>{item}</TypeText>
-            </TypeButton>
-          ))}
-        </PickerContainer>
+        <Label>Data do Agendamento</Label>
+        <StyledInput
+          value={date}
+          onChangeText={setDate}
+          placeholderTextColor={theme.colors.text}
+        />
 
-        <SaveButton onPress={handleSave} activeOpacity={0.8}>
-          <SaveButtonText>Confirmar Agendamento</SaveButtonText>
+        <SaveButton onPress={saveAppointment}>
+          <Save color="white" size={20} />
+          <SaveButtonText>Salvar Agendamento</SaveButtonText>
         </SaveButton>
-      </ScrollView>
+      </Form>
     </Container>
   );
 }
