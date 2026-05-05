@@ -26,6 +26,18 @@ async function migrateDbIfNeeded(db: SQLiteDatabase) {
       synced INTEGER DEFAULT 0,
       remote_id TEXT
     );
+
+    /* criação da tabela de usuários para a Área do Tutor VIP */
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      address TEXT,
+      latitude REAL,
+      longitude REAL,
+      profile_photo TEXT,
+      is_vip INTEGER DEFAULT 0,
+      synced INTEGER DEFAULT 0
+    );
   `);
 
   // tenta adicionar a coluna de foto para evitar o erro no NewAppointment
@@ -39,7 +51,9 @@ async function migrateDbIfNeeded(db: SQLiteDatabase) {
 }
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({});
+  const [loaded, error] = useFonts({
+    // Adicione suas fontes aqui se necessário
+  });
 
   useEffect(() => {
     if (error) throw error;
@@ -65,12 +79,22 @@ export default function RootLayout() {
       >
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
           <Stack.Screen
             name="cat-breeds"
             options={{
               title: "Raças Felinas",
               headerShown: true,
               presentation: "card",
+            }}
+          />
+
+          {/* Rota para o novo cadastro de Tutor/Usuário */}
+          <Stack.Screen
+            name="register-tutor"
+            options={{
+              presentation: "modal",
+              headerShown: false,
             }}
           />
         </Stack>

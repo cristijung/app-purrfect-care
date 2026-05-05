@@ -57,11 +57,40 @@ const Card = styled.TouchableOpacity`
   border: 1px solid ${(props) => props.theme.colors.primary}40;
 `;
 
+/* novo card para Área do Tutor VIP */
+const VIPCard = styled.TouchableOpacity`
+  background-color: ${(props) => props.theme.colors.surface};
+  width: 100%;
+  padding: 24px;
+  border-radius: 20px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border: 2px solid ${(props) => props.theme.colors.primary};
+  margin-bottom: 20px;
+`;
+
+const VIPTextContainer = styled.View`
+  flex: 1;
+`;
+
 const CardText = styled.Text`
   color: ${(props) => props.theme.colors.white};
   margin-top: 12px;
   font-size: 16px;
   font-weight: 600;
+`;
+
+const VIPTitle = styled.Text`
+  color: ${(props) => props.theme.colors.white};
+  font-size: 18px;
+  font-weight: bold;
+`;
+
+const VIPSubtitle = styled.Text`
+  color: ${(props) => props.theme.colors.gray};
+  font-size: 13px;
+  margin-top: 4px;
 `;
 
 export default function HomeScreen() {
@@ -101,6 +130,22 @@ export default function HomeScreen() {
           />
           <CardText>Consultas</CardText>
         </Card>
+
+        {/* novo card: área do tutor para cadastro e localização GPS */}
+        <VIPCard
+          activeOpacity={0.8}
+          onPress={() => router.push("/register-tutor")}
+        >
+          <VIPTextContainer>
+            <VIPTitle>Área do Tutor</VIPTitle>
+            <VIPSubtitle>Cadastre-se para acesso exclusivo e VIP</VIPSubtitle>
+          </VIPTextContainer>
+          <MaterialCommunityIcons
+            name="account-star"
+            size={40}
+            color={theme.colors.primary}
+          />
+        </VIPCard>
       </Content>
     </Container>
   );
