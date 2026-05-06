@@ -9,7 +9,6 @@ import styled from "styled-components/native";
 // importamos o serviço de sincronização que acabamos de criar
 import { syncAppointmentsWithFirebase } from "@/services/syncServices";
 
-// --- estilização --> mantendo seu padrão de Styled Components ---
 
 const Container = styled.SafeAreaView`
   flex: 1;
@@ -149,29 +148,11 @@ export default function AdminDashboard() {
     try {
       const db = await SQLite.openDatabaseAsync("purrfectcare.db");
 
-      // antes de ler, tentamos sincronizar o que estiver pendente
+      // antes de ler, tentamos sincronizar em background
       setIsSyncing(true);
-      await syncAppointmentsWithFirebase();
-      setIsSyncing(false);
+      syncAppointmentsWithFirebase().finally(() => setIsSyncing(false));
 
-      // garantindo que a tabela exista --> padrão de segurança adotado
-      // nova coluna --> 'pet_photo TEXT,'
-      await db.execAsync(`
-        PRAGMA journal_mode = WAL;
-        CREATE TABLE IF NOT EXISTS appointments (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          remote_id TEXT,
-          pet_name TEXT NOT NULL,
-          owner_name TEXT NOT NULL,
-          type TEXT NOT NULL,
-          date TEXT NOT NULL,
-          status TEXT DEFAULT 'Agendado',
-          pet_photo TEXT,    
-          synced INTEGER DEFAULT 0
-        );
-      `);
-
-      // buscando todos os registros para exibir na tela
+      // removi o execAsync/CREATE TABLE daqui pois deixei tudo p o _layout.tsx já cuida disso.
       const allRows = await db.getAllAsync<Appointment>(
         "SELECT * FROM appointments ORDER BY id DESC",
       );
@@ -185,14 +166,14 @@ export default function AdminDashboard() {
 
       setCounts({ consultas, exames, cirurgias });
     } catch (error) {
-      console.error("Erro no AdminDashboard:", error);
+      console.error("❌ Erro no AdminDashboard:", error);
       setIsSyncing(false);
     }
   };
 
   /**
    * useFocusEffect garante que os dados recarreguem sempre que
-   * o usuário voltar para esta aba (ex: após cadastrar um novo pet)
+   * o usuário voltar para esta aba
    */
   useFocusEffect(
     useCallback(() => {
@@ -280,7 +261,6 @@ export default function AdminDashboard() {
                 </ActivityDetail>
               </ActivityInfo>
 
-              {/* círculo visual: Verde = Sincronizado | Laranja = Local */}
               <SyncBadge synced={item.synced === 1} />
             </ActivityCard>
           );
@@ -293,7 +273,6 @@ export default function AdminDashboard() {
         )}
       </ScrollView>
 
-      {/* btn de ação para cadastrar novo pet */}
       <Fab onPress={() => router.push("/admin/new-appointment")}>
         <MaterialCommunityIcons name="plus" size={32} color="white" />
       </Fab>
