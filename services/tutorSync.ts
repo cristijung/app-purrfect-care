@@ -22,7 +22,7 @@ export const syncTutorData = async (sqliteDb: SQLiteDatabase) => {
   }
 
   try {
-    // 1. Buscamos o dado e já desestruturamos para garantir que não dependemos mais da instância da linha do banco
+    // buscando o dado e já desestruturamos para garantir que não dependemos mais da instância da linha do banco
     const localUser = await sqliteDb.getFirstAsync<TutorLocal>(
       "SELECT * FROM users WHERE firebase_uid = ? AND synced = 0",
       [currentUser.uid],
@@ -37,7 +37,7 @@ export const syncTutorData = async (sqliteDb: SQLiteDatabase) => {
 
     let remotePhotoUrl = localUser.profile_photo;
 
-    // 2. Fluxo de Mídia (Selfie)
+    // selfie o fluxo
     // Usamos fallbacks (?? "") para garantir que o Java não receba valores undefined
     const photoPath = localUser.profile_photo ?? "";
 
@@ -61,8 +61,8 @@ export const syncTutorData = async (sqliteDb: SQLiteDatabase) => {
       }
     }
 
-    // 3. Persistência no Firestore
-    // Garantimos que latitude e longitude sejam números válidos (fallback para 0)
+    // persistência no Firestore
+    // garantindo que latitude e longitude sejam números válidos (fallback para 0)
     await setDoc(doc(firebaseDb, "tutors", currentUser.uid), {
       full_name: localUser.full_name,
       address: localUser.address ?? "Endereço não informado",
@@ -75,7 +75,7 @@ export const syncTutorData = async (sqliteDb: SQLiteDatabase) => {
       updatedAt: serverTimestamp(),
     });
 
-    // 4. Confirmação Local
+    // confirmação do Local
     await sqliteDb.runAsync(
       "UPDATE users SET synced = 1 WHERE firebase_uid = ?",
       [currentUser.uid],

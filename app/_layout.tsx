@@ -41,7 +41,7 @@ async function migrateDbIfNeeded(db: SQLiteDatabase) {
     profile_photo TEXT,
     is_vip INTEGER DEFAULT 0,
     synced INTEGER DEFAULT 0
-  );
+  );  
   `);
 
   // tenta adicionar a coluna de foto para evitar o erro no NewAppointment
