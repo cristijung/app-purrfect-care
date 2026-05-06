@@ -18,5 +18,6 @@ Versões:
 - Firebase: `npx expo install firebase`
 - Localização: `npx expo install expo-location`
 - Lib de Imagem: `npx expo install expo-image-picker`
+- NetInfo: `npx expo install @react-native-community/netinfo`
 
 ---
