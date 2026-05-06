@@ -1,6 +1,10 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+/* importações para autenticação mobile */
+// @ts-ignore
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
 // chaves pegamos no Console do Firebase --> Configurações do Projeto
 const firebaseConfig = {
@@ -13,6 +17,19 @@ const firebaseConfig = {
   measurementId: "G-M34ZNJKLTY",
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Inicialização segura para evitar o erro de múltiplas instâncias no Fast Refresh do Expo
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+/**
+ * Configuração de Autenticação com Persistência Nativa.
+ * O AsyncStorage permite que o login do tutor seja mantido mesmo offline.
+ */
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Exportamos o 'auth' para ser usado na tela de cadastro e no tutorSync
+export { app, auth, db, storage };

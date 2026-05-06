@@ -8,6 +8,13 @@ import { Alert, ScrollView } from "react-native";
 import styled from "styled-components/native";
 import { theme } from "../styles/theme";
 
+/* imports de auth */
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../config/firebaseConfig";
+
+/* import do orquestrador de sincronização */
+import { runGlobalSync } from "../services/syncManager";
+
 const Container = styled.KeyboardAvoidingView`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
@@ -92,13 +99,15 @@ export default function RegisterTutor() {
   const db = useSQLiteContext();
 
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [address, setAddress] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
   );
+  const [loading, setLoading] = useState(false);
 
-  // fn para selfie ou galeria
   const handlePickImage = async () => {
     Alert.alert("Foto de Perfil", "Escolha uma opção", [
       { text: "Câmera (Selfie)", onPress: () => openCamera() },
@@ -111,7 +120,6 @@ export default function RegisterTutor() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted")
       return Alert.alert("Ops!", "Precisamos da câmera.");
-
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
@@ -129,47 +137,97 @@ export default function RegisterTutor() {
     if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
-  // fn p GPS
   const handleGetLocation = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted")
-      return Alert.alert("Ops!", "Permita o acesso ao GPS.");
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted")
+        return Alert.alert("Ops!", "Permita o acesso ao GPS.");
 
-    let loc = await Location.getCurrentPositionAsync({});
-    setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      // Accuracy.Balanced é mais rápido e estável para emuladores
+      let loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
-    // geocodificação reversa para pegar o nome da rua/cidade
-    let response = await Location.reverseGeocodeAsync({
-      latitude: loc.coords.latitude,
-      longitude: loc.coords.longitude,
-    });
+      setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
 
-    if (response.length > 0) {
-      const item = response[0];
-      setAddress(`${item.street}, ${item.streetNumber} - ${item.subregion}`);
+      let response = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      if (response.length > 0) {
+        const item = response[0];
+        setAddress(
+          `${item.street || ""}, ${item.streetNumber || ""} - ${item.subregion || ""}`,
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert(
+        "GPS Indisponível",
+        "Não conseguimos detectar sua localização. Verifique se o GPS do emulador está ativo ou digite o endereço manualmente.",
+      );
     }
   };
 
   const handleSave = async () => {
-    if (!fullName || !address)
-      return Alert.alert("Erro", "Preencha os campos obrigatórios.");
+    if (!fullName || !email || !password) {
+      return Alert.alert(
+        "Erro",
+        "Preencha os campos obrigatórios (Nome, E-mail e Senha).",
+      );
+    }
 
+    setLoading(true);
     try {
-      // persistência local seguindo sua arquitetura offline-first
+      // Firebase Auth: criação da conta
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      const uid = userCredential.user.uid;
+
+      // SQLite: persistência local vinculada ao firebase_uid
       await db.runAsync(
-        `INSERT INTO users (full_name, address, latitude, longitude, profile_photo, synced) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [fullName, address, coords?.lat || 0, coords?.lng || 0, photo || "", 0],
+        `INSERT INTO users (firebase_uid, full_name, address, latitude, longitude, profile_photo, synced) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          uid,
+          fullName,
+          address || "Endereço não detectado",
+          coords?.lat ?? 0, // fallback crítico para o emulador
+          coords?.lng ?? 0, // fallback crítico para o emulador
+          photo || "",
+          0,
+        ],
       );
 
       Alert.alert(
         "Sucesso!",
-        "Cadastro realizado localmente. Sincronizando com a nuvem...",
-        [{ text: "OK", onPress: () => router.back() }],
+        "Cadastro VIP realizado! Seus dados serão sincronizados em breve.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // dispara a sincronização global imediatamente após fechar o alerta
+              runGlobalSync();
+              router.back();
+            },
+          },
+        ],
       );
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      Alert.alert("Erro", "Não foi possível salvar os dados.");
+      let errorMsg = "Não foi possível realizar o cadastro.";
+      if (e.code === "auth/email-already-in-use")
+        errorMsg = "Este e-mail já está cadastrado.";
+      if (e.code === "auth/weak-password")
+        errorMsg = "A senha deve ter pelo menos 6 caracteres.";
+
+      Alert.alert("Erro", errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -201,13 +259,32 @@ export default function RegisterTutor() {
 
           <Label>Nome Completo *</Label>
           <Input
-            placeholder="Ex: Maria Cristina Jung"
+            placeholder="Ex: Cristina Jung"
             placeholderTextColor={theme.colors.gray}
             value={fullName}
             onChangeText={setFullName}
           />
 
-          <Label>Endereço</Label>
+          <Label>E-mail *</Label>
+          <Input
+            placeholder="tutor@exemplo.com"
+            placeholderTextColor={theme.colors.gray}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          <Label>Senha *</Label>
+          <Input
+            placeholder="Mínimo 6 caracteres"
+            placeholderTextColor={theme.colors.gray}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <Label>Localização</Label>
           <LocationButton onPress={handleGetLocation}>
             <MaterialCommunityIcons
               name="map-marker-radius"
@@ -233,8 +310,10 @@ export default function RegisterTutor() {
             multiline
           />
 
-          <Button onPress={handleSave}>
-            <ButtonText>Finalizar Cadastro VIP</ButtonText>
+          <Button onPress={handleSave} disabled={loading}>
+            <ButtonText>
+              {loading ? "Cadastrando..." : "Finalizar Cadastro VIP"}
+            </ButtonText>
           </Button>
         </Form>
       </ScrollView>

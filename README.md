@@ -14,6 +14,7 @@ Versões:
 - Lucide Icons: `npm install lucide-react-native`
 - Zustand & SQLite: `npx expo install expo-sqlite zustand`
 - Haptics: `npx expo install expo-haptics`
+- ReactNativeAsyncStorage: `npx expo install @react-native-async-storage/async-storage`
 - Firebase: `npx expo install firebase`
 - Localização: `npx expo install expo-location`
 - Lib de Imagem: `npx expo install expo-image-picker`
