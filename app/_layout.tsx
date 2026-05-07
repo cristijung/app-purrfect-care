@@ -18,9 +18,11 @@ SplashScreen.preventAutoHideAsync();
  * ela garante que a tabela e a coluna de foto existam antes do app abrir.
  */
 async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  // cria a tabela inicial caso não exista
+  // config inicial de performance
+  await db.execAsync("PRAGMA journal_mode = WAL;");
+
+  // criação da tabela de agendamentos
   await db.execAsync(`
-    PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS appointments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       pet_name TEXT NOT NULL,
@@ -30,35 +32,51 @@ async function migrateDbIfNeeded(db: SQLiteDatabase) {
       synced INTEGER DEFAULT 0,
       remote_id TEXT
     );
-
-   CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    firebase_uid TEXT UNIQUE, -- ID da Autenticação do Firebase
-    full_name TEXT NOT NULL,
-    address TEXT,
-    latitude REAL,
-    longitude REAL,
-    profile_photo TEXT,
-    is_vip INTEGER DEFAULT 0,
-    synced INTEGER DEFAULT 0
-  );  
   `);
 
-  // tenta adicionar a coluna de foto para evitar o erro no NewAppointment
+  // criação da tabela de usuários/tutores
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      firebase_uid TEXT UNIQUE,
+      full_name TEXT NOT NULL,
+      address TEXT,
+      latitude REAL,
+      longitude REAL,
+      profile_photo TEXT,
+      is_vip INTEGER DEFAULT 0,
+      synced INTEGER DEFAULT 0
+    );
+  `);
+
+  // criação da tabela de pets (Seth, Grogu, Mina e Kirara)
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS pets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      firebase_uid TEXT NOT NULL,
+      name TEXT NOT NULL,
+      species TEXT NOT NULL,
+      breed TEXT,
+      birth_date TEXT,
+      photo TEXT,
+      synced INTEGER DEFAULT 0
+    );
+  `);
+
+  // --- blocos de bigração (Adição de colunas em tabelas existentes) ---
+
   try {
     await db.execAsync(`ALTER TABLE appointments ADD COLUMN pet_photo TEXT;`);
     console.log("✅ Banco de dados atualizado com a coluna pet_photo.");
   } catch (e) {
-    // se a coluna já existir, ele cai aqui e apenas ignoramos o erro
-    console.log("ℹ️ Estrutura do banco já está atualizada.");
+    console.log("ℹ️ Estrutura de appointments já está atualizada.");
   }
 
   try {
     await db.execAsync(`ALTER TABLE users ADD COLUMN firebase_uid TEXT;`);
     console.log("✅ Banco de dados atualizado com a coluna firebase_uid.");
   } catch (e) {
-    // se a coluna já existir (ou se a tabela foi criada do zero agora), ele cai aqui
-    console.log("ℹ️ Coluna firebase_uid já está presente ou tabela é nova.");
+    console.log("ℹ️ Coluna firebase_uid já está presente em users.");
   }
 }
 
@@ -69,16 +87,25 @@ export default function RootLayout() {
 
   // efeito para monitorar a conexão com a internet e disparar a sincronização
   useEffect(() => {
+    if (!loaded) return;
+
     const unsubscribe = NetInfo.addEventListener((state) => {
-      // se detectar internet, chama o orquestrador global (Pets + Tutores)
-      if (state.isConnected && state.isInternetReachable) {
-        console.log("🌐 Conexão detectada. Iniciando SyncManager...");
-        runGlobalSync();
+      if (state.isConnected && state.isInternetReachable) {        
+        const timer = setTimeout(() => {
+          console.log("🔄 [SyncManager] Iniciando varredura segura...");
+          runGlobalSync().catch((err) => {
+            console.log(
+              "ℹ️ Banco ocupado ou em migração, tentando sync depois.",
+            );
+          });
+        }, 5000);
+
+        return () => clearTimeout(timer);
       }
     });
 
-    return () => unsubscribe(); // limpa o listener ao fechar o app
-  }, []);
+    return () => unsubscribe();
+  }, [loaded]);
 
   useEffect(() => {
     if (error) throw error;
@@ -93,17 +120,16 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider theme={theme}>
-      {/* o onInit chama a nossa função de migração assim que o banco abre.
-        Isso garante que o NewAppointment encontre a coluna 'pet_photo'.
-      */}
       <SQLiteProvider
         databaseName="purrfectcare.db"
         onInit={migrateDbIfNeeded}
-        useSuspense
+        // useSuspense desativado para evitar deadlocks na Splash Screen
       >
         <Stack screenOptions={{ headerShown: false }}>
+          {/* rota das abas principais (Admin/Comum) */}
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
+          {/* rota de raças */}
           <Stack.Screen
             name="cat-breeds"
             options={{
@@ -113,9 +139,26 @@ export default function RootLayout() {
             }}
           />
 
-          {/* rota p o novo cadastro de tutor/usuário */}
+          {/* rota para o cadastro de tutor */}
           <Stack.Screen
             name="register-tutor"
+            options={{
+              presentation: "modal",
+              headerShown: false,
+            }}
+          />
+
+          {/* --- rotas da área VIP --- */}
+          <Stack.Screen
+            name="tutor/index"
+            options={{
+              headerShown: false,
+              gestureEnabled: false, // impede voltar para o cadastro deslizando a tela
+            }}
+          />
+
+          <Stack.Screen
+            name="tutor/add-pet"
             options={{
               presentation: "modal",
               headerShown: false,

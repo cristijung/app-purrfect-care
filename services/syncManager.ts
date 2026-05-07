@@ -1,6 +1,7 @@
 import * as SQLite from "expo-sqlite";
+import { syncPetData } from "./petSync"; // novo serviço de pets
 import { syncAppointmentsWithFirebase } from "./syncServices"; // os agendamentos existentes
-import { syncTutorData } from "./tutorSync"; // novo serviço de tutores VIP
+import { syncTutorData } from "./tutorSync"; // serviço de tutores VIP
 
 /**
  * syncManager: este vai ser "O Cérebro" da sincronização do app
@@ -17,6 +18,7 @@ export const runGlobalSync = async () => {
     await Promise.all([
       syncAppointmentsWithFirebase(), // o que já tínhamos
       syncTutorData(db), // que criamos agora
+      syncPetData(db), // sincronização dos pets já existentes
     ]);
 
     console.log("🏁 [SyncManager] Sincronização concluída com sucesso.");

@@ -212,7 +212,7 @@ export default function RegisterTutor() {
             onPress: () => {
               // dispara a sincronização global imediatamente após fechar o alerta
               runGlobalSync();
-              router.back();
+              router.replace("/tutor");
             },
           },
         ],
