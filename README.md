@@ -15,6 +15,7 @@ Versões:
 - Zustand & SQLite: `npx expo install expo-sqlite zustand`
 - Haptics: `npx expo install expo-haptics`
 - ReactNativeAsyncStorage: `npx expo install @react-native-async-storage/async-storage`
+- Lib Constantes: `npx expo install expo-constants`
 - Firebase: `npx expo install firebase`
 - Localização: `npx expo install expo-location`
 - Lib de Imagem: `npx expo install expo-image-picker`
